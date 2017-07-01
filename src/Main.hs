@@ -26,13 +26,14 @@ type BoardState a = StateT Board Maybe a -- Board -> Maybe (a, Board)
 readCell :: Idx -> BoardState Cell
 readCell ij = StateT $ \board -> Just (boardGetCell board ij, board)
 
-writeCell :: Idx -> Cell -> BoardState ()
+writeCell :: Idx -> Maybe Cell -> BoardState ()
 writeCell ij cell =
-    StateT $ \board ->
-        let newBoard = boardSetCell board ij cell
-        in case newBoard of
-               Nothing -> Nothing
-               Just b -> Just ((), b)
+    StateT $ \board -> do
+        c <- cell
+        let newBoard = boardSetCell board ij c
+        case newBoard of
+            Nothing -> Nothing
+            Just b -> Just ((), b)
 
 crossOut
     :: Foldable f
@@ -101,8 +102,8 @@ preSets board ijs = ps 2 ++ ps 3 ++ ps 4
   where
     ps n = findPreSets board n ijs
 
-chooseSearchCell :: Board -> (Idx, Cell)
-chooseSearchCell board =
+chooseUnsolvedCell :: Board -> (Idx, Cell)
+chooseUnsolvedCell board =
     List.minimumBy (\(_, x) (_, y) -> compare (cellSize x) (cellSize y)) $
     filter (cellIsUnsolved . snd) . boardCells $ board
 
@@ -113,25 +114,25 @@ simplify board = go (Just board) Nothing
         | a == b = a
         | otherwise = go (a >>= markup >>= applyPreSets) a
 
-solve'' :: Board -> Maybe Board
-solve'' board = do
+solve :: Board -> Maybe Board
+solve board = do
     simplifiedBoard <- verify =<< simplify board
-    guard (not . boardIsInvalid $ simplifiedBoard)
     if boardIsSolved simplifiedBoard
         then Just simplifiedBoard
         else do
-            let (ij, cell) = chooseSearchCell simplifiedBoard
+            let (ij, cell) = chooseUnsolvedCell simplifiedBoard
             let solvedBoards =
                     map
-                        (\v -> boardSetCellValue simplifiedBoard ij v >>= solve'')
-                        (cellChoices cell)
-            asum solvedBoards -- first item in solvedBoards that is not Nothing
-
+                        (solve <=< boardSetCellValue simplifiedBoard ij)
+                        (cellValues cell)
+            firstValid solvedBoards
+  where
+    firstValid = asum
 
 main :: IO ()
 main = do
     line <- getLine
-    let solution = join (solve'' <$> parseBoard line)
+    let solution = join (solve <$> parseBoard line)
     case solution of
         Just board -> print board
         Nothing -> putStrLn "Invalid puzzle"

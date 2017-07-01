@@ -35,18 +35,16 @@ boxOf :: Idx -> [Idx]
 boxOf ij = boxMap Map.! ij
   where
     boxMap =
-        Map.fromList . concatMap (\box -> map (\ij -> (ij, box)) box) $ boxes
+        Map.fromList . concatMap (\box -> map (\ij' -> (ij', box)) box) $ boxes
 
 data Cell
     = Unsolved !IntSet
     | Solved !Int
-    | Invalid
     deriving (Eq)
 
 instance Show Cell where
     show (Unsolved s) = concatMap show (IntSet.toList s)
     show (Solved n) = show n
-    show Invalid = "!"
 
 cellIsUnsolved :: Cell -> Bool
 cellIsUnsolved (Unsolved _) = True
@@ -56,33 +54,29 @@ cellIsSolved :: Cell -> Bool
 cellIsSolved (Solved _) = True
 cellIsSolved _ = False
 
-cellIsInvalid :: Cell -> Bool
-cellIsInvalid Invalid = True
-cellIsInvalid _ = False
-
 cellSize :: Cell -> Int
-cellSize Invalid = 0
 cellSize (Solved _) = 1
 cellSize (Unsolved s) = IntSet.size s
 
-cellChoices :: Cell -> [IntSet.Key]
-cellChoices (Unsolved s) = IntSet.toList s
-cellChoices _ = []
+cellValues :: Cell -> [IntSet.Key]
+cellValues (Unsolved s) = IntSet.toList s
+cellValues _ = []
 
 unsolvedCellSet :: Cell -> IntSet
 unsolvedCellSet (Unsolved s) = s
+unsolvedCellSet _ = IntSet.empty
 
 defaultCellSet :: Cell
 defaultCellSet = Unsolved (IntSet.fromList [1 .. 9])
 
-deleteCellValues :: IntSet -> Cell -> Cell
+deleteCellValues :: IntSet -> Cell -> Maybe Cell
 deleteCellValues values (Unsolved s) =
     let s' = s IntSet.\\ values
     in case IntSet.size s' of
-           0 -> Invalid
-           1 -> (Solved . head . IntSet.toList) s'
-           _ -> Unsolved s'
-deleteCellValues _ cell = cell
+           0 -> Nothing
+           1 -> Just $ (Solved . head . IntSet.toList) s'
+           _ -> Just $ Unsolved s'
+deleteCellValues _ cell = Just cell
 
 newtype Board =
     Board (Map Idx Cell)
@@ -106,15 +100,10 @@ boardIsSolved :: Board -> Bool
 boardIsSolved b@(Board cs) =
     all cellIsSolved (Map.elems cs) && (isJust . verify) b
 
-boardIsInvalid :: Board -> Bool
-boardIsInvalid b@(Board cs) =
-    any cellIsInvalid (Map.elems cs) || (isNothing . verify) b
-
 boardSetCellValue :: Board -> Idx -> Int -> Maybe Board
 boardSetCellValue board ij n = boardSetCell board ij (Solved n)
 
 boardSetCell :: Board -> Idx -> Cell -> Maybe Board
-boardSetCell _ _ Invalid = Nothing
 boardSetCell (Board cs) ij cell = Just . Board $ Map.insert ij cell cs
 
 boardCells :: Board -> [(Idx, Cell)]
