@@ -67,4 +67,4 @@ extra-package-dbs: []
 
 ghc-options:
     # All packages
-    "*":  -O2
+    "*":  -O2 -Wall

@@ -1,15 +1,13 @@
 module SudokuTypes where
 
 import Data.Char (digitToInt)
-import qualified Data.IntSet as IntSet
 import Data.IntSet (IntSet)
-import Data.List (tails)
+import qualified Data.IntSet as IntSet
 import qualified Data.List as List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
-import Text.Printf
 import Data.Maybe
+import Text.Printf
 
 type Idx = (Int, Int)
 
@@ -105,23 +103,27 @@ instance Show Board where
         mapGroup n f xs = f (take n xs) : mapGroup n f (drop n xs)
 
 boardIsSolved :: Board -> Bool
-boardIsSolved b@(Board cs) = all cellIsSolved (Map.elems cs) && (isJust . verify) b
+boardIsSolved b@(Board cs) =
+    all cellIsSolved (Map.elems cs) && (isJust . verify) b
 
 boardIsInvalid :: Board -> Bool
-boardIsInvalid b@(Board cs) = any cellIsInvalid (Map.elems cs) || (isNothing . verify) b
+boardIsInvalid b@(Board cs) =
+    any cellIsInvalid (Map.elems cs) || (isNothing . verify) b
 
-boardSetCellValue :: Board -> Idx -> Int -> Board
+boardSetCellValue :: Board -> Idx -> Int -> Maybe Board
 boardSetCellValue board ij n = boardSetCell board ij (Solved n)
 
-boardSetCell :: Board -> Idx -> Cell -> Board
-boardSetCell (Board cs) ij cell = Board $ Map.insert ij cell cs
+boardSetCell :: Board -> Idx -> Cell -> Maybe Board
+boardSetCell _ _ Invalid = Nothing
+boardSetCell (Board cs) ij cell = Just . Board $ Map.insert ij cell cs
 
 boardCells :: Board -> [(Idx, Cell)]
 boardCells (Board cs) = Map.toAscList cs
 
 parseBoard :: String -> Maybe Board
 parseBoard puzzle
-    | length cellSets == length cells = verify . Board . Map.fromList $ zip cells cellSets
+    | length cellSets == length cells =
+        verify . Board . Map.fromList $ zip cells cellSets
     | otherwise = Nothing
   where
     cellSets = map convertNumber puzzle
@@ -130,7 +132,10 @@ parseBoard puzzle
         | otherwise = defaultCellSet
 
 verify :: Board -> Maybe Board
-verify board = if all verifyRange (rows ++ cols ++ boxes) then Just board else Nothing
+verify board =
+    if all verifyRange (rows ++ cols ++ boxes)
+        then Just board
+        else Nothing
   where
     verifyRange cs =
         let solvedCells =
