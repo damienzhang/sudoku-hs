@@ -35,16 +35,16 @@ boxOf :: Idx -> [Idx]
 boxOf ij = boxMap Map.! ij
   where
     boxMap =
-        Map.fromList . concatMap (\box -> map (\ij' -> (ij', box)) box) $ boxes
+      Map.fromList . concatMap (\box -> map (\ij' -> (ij', box)) box) $ boxes
 
 data Cell
-    = Unsolved !IntSet
-    | Solved !Int
-    deriving (Eq)
+  = Unsolved !IntSet
+  | Solved !Int
+  deriving (Eq)
 
 instance Show Cell where
-    show (Unsolved s) = concatMap show (IntSet.toList s)
-    show (Solved n) = show n
+  show (Unsolved s) = concatMap show (IntSet.toList s)
+  show (Solved n) = show n
 
 cellIsUnsolved :: Cell -> Bool
 cellIsUnsolved (Unsolved _) = True
@@ -71,34 +71,34 @@ defaultCellSet = Unsolved (IntSet.fromList [1 .. 9])
 
 deleteCellValues :: IntSet -> Cell -> Maybe Cell
 deleteCellValues values (Unsolved s) =
-    let s' = s IntSet.\\ values
-    in case IntSet.size s' of
-           0 -> Nothing
-           1 -> Just $ (Solved . head . IntSet.toList) s'
-           _ -> Just $ Unsolved s'
+  let s' = s IntSet.\\ values
+  in case IntSet.size s' of
+       0 -> Nothing
+       1 -> Just $ (Solved . head . IntSet.toList) s'
+       _ -> Just $ Unsolved s'
 deleteCellValues _ cell = Just cell
 
 newtype Board =
-    Board (Map Idx Cell)
-    deriving (Eq)
+  Board (Map Idx Cell)
+  deriving (Eq)
 
 boardGetCell :: Board -> Idx -> Cell
 boardGetCell (Board cs) ij = cs Map.! ij
 
 instance Show Board where
-    show (Board board) =
-        concat $ mapGroup 9 (\xs -> concat xs ++ "\n") formattedCells
-      where
-        cellText = map show (Map.elems board)
-        cellWidth = (maximum . map length) cellText + 1
-        formattedCells = map (pad cellWidth) cellText
-        pad n x = printf "%*s" n x
-        mapGroup _ _ [] = []
-        mapGroup n f xs = f (take n xs) : mapGroup n f (drop n xs)
+  show (Board board) =
+    concat $ mapGroup 9 (\xs -> concat xs ++ "\n") formattedCells
+    where
+      cellText = map show (Map.elems board)
+      cellWidth = (maximum . map length) cellText + 1
+      formattedCells = map (pad cellWidth) cellText
+      pad n x = printf "%*s" n x
+      mapGroup _ _ [] = []
+      mapGroup n f xs = f (take n xs) : mapGroup n f (drop n xs)
 
 boardIsSolved :: Board -> Bool
 boardIsSolved b@(Board cs) =
-    all cellIsSolved (Map.elems cs) && (isJust . verify) b
+  all cellIsSolved (Map.elems cs) && (isJust . verify) b
 
 boardSetCellValue :: Board -> Idx -> Int -> Maybe Board
 boardSetCellValue board ij n = boardSetCell board ij (Solved n)
@@ -111,23 +111,23 @@ boardCells (Board cs) = Map.toAscList cs
 
 parseBoard :: String -> Maybe Board
 parseBoard puzzle
-    | length cellSets == length cells =
-        verify . Board . Map.fromList $ zip cells cellSets
-    | otherwise = Nothing
+  | length cellSets == length cells =
+    verify . Board . Map.fromList $ zip cells cellSets
+  | otherwise = Nothing
   where
     cellSets = map convertNumber puzzle
     convertNumber n
-        | n `elem` ['1' .. '9'] = Solved (digitToInt n)
-        | otherwise = defaultCellSet
+      | n `elem` ['1' .. '9'] = Solved (digitToInt n)
+      | otherwise = defaultCellSet
 
 verify :: Board -> Maybe Board
 verify board =
-    if all verifyRange (rows ++ cols ++ boxes)
-        then Just board
-        else Nothing
+  if all verifyRange (rows ++ cols ++ boxes)
+    then Just board
+    else Nothing
   where
     verifyRange cs =
-        let solvedCells =
-                filter cellIsSolved $
-                foldr (\a xs -> boardGetCell board a : xs) [] cs
-        in length solvedCells == (length . List.nub) solvedCells
+      let solvedCells =
+            filter cellIsSolved $
+            foldr (\a xs -> boardGetCell board a : xs) [] cs
+      in length solvedCells == (length . List.nub) solvedCells
